@@ -9,7 +9,7 @@ st.set_page_config(page_title="PET Bottles Analysis Dashboard", layout="wide")
 @st.cache_data
 def load_data():
     demand = pd.read_csv("Demand.csv", parse_dates=["Date"])
-    port = pd.read_csv("Port.csv", parse_dates=["Date"])
+    port = pd.read_csv("Port.csv")
     raw_material = pd.read_csv("RawMaterial Prices.csv", parse_dates=["Date"])
     return demand, port, raw_material
 
