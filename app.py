@@ -5,13 +5,11 @@ import plotly.express as px
 # Page configuration
 st.set_page_config(page_title="PET Bottle Demand Dashboard", layout="wide")
 
-# --------- Load and Clean Data ---------
-data = pd.read_csv("Demand.csv")  # Replace with actual filename
+# ---------- Load and Clean Data ----------
+data = pd.read_csv("Demand.csv")
+data.columns = data.columns.str.strip()  # Remove unwanted spaces
 
-# Clean column names (remove leading/trailing spaces)
-data.columns = data.columns.str.strip()
-
-# Rename columns for convenience
+# Rename for convenience
 data.rename(columns={
     "Date of requirement": "Date",
     "PET bottle capacity": "Capacity",
@@ -19,11 +17,12 @@ data.rename(columns={
     "Volume (Million Pieces)": "Volume_Million_Pieces"
 }, inplace=True)
 
-# Convert Date column
+# Convert and filter only 2019
 data["Date"] = pd.to_datetime(data["Date"])
+data = data[data["Date"].dt.year == 2019].copy()
 data["Month"] = data["Date"].dt.to_period("M").astype(str)
 
-# --------- SIDEBAR: Filters ---------
+# ---------- Sidebar Filters ----------
 with st.sidebar:
     st.title("🔍 Filters")
 
@@ -47,9 +46,7 @@ with st.sidebar:
         [data["Date"].min(), data["Date"].max()]
     )
 
-    section = st.radio("📂 Navigation", ["Demand Analysis", "Other Analysis"])
-
-# --------- Filter Data ---------
+# ---------- Apply Filters ----------
 filtered_data = data[
     (data["Region"].isin(region_filter)) &
     (data["Capacity"].isin(capacity_filter)) &
@@ -57,69 +54,51 @@ filtered_data = data[
     (data["Date"].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])))
 ]
 
-# --------- DEMAND ANALYSIS ---------
-if section == "Demand Analysis":
-    st.title("📦 PET Bottle Demand Analysis")
-    st.markdown("Explore trends in PET bottle demand across regions, capacities, and types.")
-    st.markdown("---")
+# ---------- Main Content ----------
+st.title("📦 PET Bottle Demand Dashboard")
 
-    # KPIs
-    st.subheader("🔹 Demand KPIs")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Records", filtered_data.shape[0])
-    col2.metric("Regions", filtered_data["Region"].nunique())
-    col3.metric("Capacities", filtered_data["Capacity"].nunique())
-    col4.metric("Types", filtered_data["Type"].nunique())
+# ---------- KPIs ----------
+st.subheader("🔹 Key Performance Indicators")
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Total Records", filtered_data.shape[0])
+col2.metric("Regions", filtered_data["Region"].nunique())
+col3.metric("Capacities", filtered_data["Capacity"].nunique())
+col4.metric("Types", filtered_data["Type"].nunique())
 
-    st.markdown("---")
+st.markdown("---")
 
-    # Line Chart: Demand Over Time
-    st.subheader("📈 Demand Over Time (Monthly)")
+# ---------- Analysis Tabs ----------
+tab1, tab2 = st.tabs(["📈 Demand Analysis", "🛠️ Coming Soon"])
+
+with tab1:
+    st.subheader("Monthly Demand Trend")
     monthly_data = filtered_data.groupby("Month")["Volume_Million_Pieces"].sum().reset_index()
-    fig_line = px.line(
-        monthly_data, x="Month", y="Volume_Million_Pieces",
-        title="Monthly PET Bottle Demand", markers=True
-    )
+    fig_line = px.line(monthly_data, x="Month", y="Volume_Million_Pieces", markers=True,
+                       title="Monthly PET Bottle Demand (2019)")
     st.plotly_chart(fig_line, use_container_width=True)
 
-    # Heatmap: Region vs Month
-    st.subheader("🌍 Region-Wise Demand Heatmap")
+    st.subheader("Region vs Month Heatmap")
     heatmap_data = filtered_data.groupby(["Region", "Month"])["Volume_Million_Pieces"].sum().reset_index()
     heatmap_pivot = heatmap_data.pivot(index="Region", columns="Month", values="Volume_Million_Pieces")
-    fig_heatmap = px.imshow(
-        heatmap_pivot, text_auto=True, aspect="auto",
-        labels=dict(color="Volume (Million Pieces)"),
-        title="Demand Heatmap by Region and Month"
-    )
+    fig_heatmap = px.imshow(heatmap_pivot, text_auto=True, aspect="auto",
+                            labels=dict(color="Volume (Million Pieces)"),
+                            title="Heatmap: Region vs Month")
     st.plotly_chart(fig_heatmap, use_container_width=True)
 
-    # Column Chart: Capacity-wise
-    st.subheader("🧪 Demand by PET Bottle Capacity")
-    cap_summary = filtered_data.groupby("Capacity")["Volume_Million_Pieces"].sum().reset_index()
-    fig_capacity = px.bar(
-        cap_summary.sort_values("Volume_Million_Pieces", ascending=False),
-        x="Capacity", y="Volume_Million_Pieces",
-        title="Total Demand by Bottle Capacity", text_auto=True, color="Capacity"
-    )
-    st.plotly_chart(fig_capacity, use_container_width=True)
+    st.subheader("Capacity-wise Demand")
+    cap_data = filtered_data.groupby("Capacity")["Volume_Million_Pieces"].sum().reset_index()
+    fig_cap = px.bar(cap_data.sort_values("Volume_Million_Pieces", ascending=False),
+                     x="Capacity", y="Volume_Million_Pieces",
+                     title="Demand by PET Bottle Capacity", text_auto=True, color="Capacity")
+    st.plotly_chart(fig_cap, use_container_width=True)
 
-    # Bar Chart: Type-wise
-    st.subheader("🧱 Demand by PET Bottle Type")
-    type_summary = filtered_data.groupby("Type")["Volume_Million_Pieces"].sum().reset_index()
-    fig_type = px.bar(
-        type_summary.sort_values("Volume_Million_Pieces", ascending=False),
-        x="Type", y="Volume_Million_Pieces",
-        title="Total Demand by Bottle Type", text_auto=True, color="Type"
-    )
+    st.subheader("Type-wise Demand")
+    type_data = filtered_data.groupby("Type")["Volume_Million_Pieces"].sum().reset_index()
+    fig_type = px.bar(type_data.sort_values("Volume_Million_Pieces", ascending=False),
+                      x="Type", y="Volume_Million_Pieces",
+                      title="Demand by PET Bottle Type", text_auto=True, color="Type")
     st.plotly_chart(fig_type, use_container_width=True)
 
-# --------- OTHER ANALYSIS ---------
-elif section == "Other Analysis":
-    st.title("🛠️ Future Analysis Placeholder")
-    st.markdown("""
-    This section will include future analysis such as:
-    - 📊 Port Data Analysis  
-    - 💰 Raw Material Price Trends  
-    - 🤖 Forecasting and Predictive Modeling  
-    - 🌐 Regional Supply Chain Insights
-    """)
+with tab2:
+    st.info("This section will include future analysis like port & raw material trends.")
+
