@@ -6,18 +6,21 @@ import plotly.express as px
 st.set_page_config(page_title="PET Bottle Demand Dashboard", layout="wide")
 
 # --------- Load and Clean Data ---------
-data = pd.read_csv("Demand.csv")
+data = pd.read_csv("Demand.csv")  # Replace with actual filename
 
-# Clean column names to avoid space-related errors
+# Clean column names (remove leading/trailing spaces)
 data.columns = data.columns.str.strip()
 
-# Confirm the exact name of the date column
-if "Date_of_requirement" not in data.columns:
-    st.error(f"⚠️ 'Date_of_requirement' column not found. Columns present: {data.columns.tolist()}")
-    st.stop()
+# Rename columns for convenience
+data.rename(columns={
+    "Date of requirement": "Date",
+    "PET bottle capacity": "Capacity",
+    "PET bottle weight (grams)": "Weight_grams",
+    "Volume (Million Pieces)": "Volume_Million_Pieces"
+}, inplace=True)
 
-# Convert date column
-data["Date"] = pd.to_datetime(data["Date_of_requirement"])
+# Convert Date column
+data["Date"] = pd.to_datetime(data["Date"])
 data["Month"] = data["Date"].dt.to_period("M").astype(str)
 
 # --------- SIDEBAR: Filters ---------
@@ -30,8 +33,8 @@ with st.sidebar:
     )
 
     capacity_filter = st.multiselect(
-        "Select Capacity", options=data["PET_bottle_capacity"].unique(),
-        default=data["PET_bottle_capacity"].unique()
+        "Select Capacity", options=data["Capacity"].unique(),
+        default=data["Capacity"].unique()
     )
 
     type_filter = st.multiselect(
@@ -49,7 +52,7 @@ with st.sidebar:
 # --------- Filter Data ---------
 filtered_data = data[
     (data["Region"].isin(region_filter)) &
-    (data["PET_bottle_capacity"].isin(capacity_filter)) &
+    (data["Capacity"].isin(capacity_filter)) &
     (data["Type"].isin(type_filter)) &
     (data["Date"].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])))
 ]
@@ -65,7 +68,7 @@ if section == "Demand Analysis":
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total Records", filtered_data.shape[0])
     col2.metric("Regions", filtered_data["Region"].nunique())
-    col3.metric("Capacities", filtered_data["PET_bottle_capacity"].nunique())
+    col3.metric("Capacities", filtered_data["Capacity"].nunique())
     col4.metric("Types", filtered_data["Type"].nunique())
 
     st.markdown("---")
@@ -92,11 +95,11 @@ if section == "Demand Analysis":
 
     # Column Chart: Capacity-wise
     st.subheader("🧪 Demand by PET Bottle Capacity")
-    cap_summary = filtered_data.groupby("PET_bottle_capacity")["Volume_Million_Pieces"].sum().reset_index()
+    cap_summary = filtered_data.groupby("Capacity")["Volume_Million_Pieces"].sum().reset_index()
     fig_capacity = px.bar(
         cap_summary.sort_values("Volume_Million_Pieces", ascending=False),
-        x="PET_bottle_capacity", y="Volume_Million_Pieces",
-        title="Total Demand by Bottle Capacity", text_auto=True, color="PET_bottle_capacity"
+        x="Capacity", y="Volume_Million_Pieces",
+        title="Total Demand by Bottle Capacity", text_auto=True, color="Capacity"
     )
     st.plotly_chart(fig_capacity, use_container_width=True)
 
@@ -110,4 +113,13 @@ if section == "Demand Analysis":
     )
     st.plotly_chart(fig_type, use_container_width=True)
 
-# ---------
+# --------- OTHER ANALYSIS ---------
+elif section == "Other Analysis":
+    st.title("🛠️ Future Analysis Placeholder")
+    st.markdown("""
+    This section will include future analysis such as:
+    - 📊 Port Data Analysis  
+    - 💰 Raw Material Price Trends  
+    - 🤖 Forecasting and Predictive Modeling  
+    - 🌐 Regional Supply Chain Insights
+    """)
