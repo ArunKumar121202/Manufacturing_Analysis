@@ -44,11 +44,6 @@ with st.sidebar:
         default=data["Type"].unique()
     )
 
-    month_filter = st.multiselect(
-        "Select Month(s)", options=data["Month"].unique(),
-        default=data["Month"].unique()
-    )
-
     day_filter = st.multiselect(
         "Select Day(s)", options=sorted(data["Day"].unique()),
         default=sorted(data["Day"].unique())
@@ -59,7 +54,6 @@ filtered_data = data[
     (data["Region"].isin(region_filter)) &
     (data["Capacity"].isin(capacity_filter)) &
     (data["Type"].isin(type_filter)) &
-    (data["Month"].isin(month_filter)) &
     (data["Day"].isin(day_filter))
 ]
 
