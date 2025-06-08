@@ -5,43 +5,54 @@ import plotly.express as px
 # Page configuration
 st.set_page_config(page_title="PET Bottle Demand Dashboard", layout="wide")
 
-# Load data
+# --------- Load Data with Safety Check ---------
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Demand.csv", parse_dates=["Date"])
+    df = pd.read_csv("Demand.csv")
+    
+    # Fix for column name inconsistencies
+    date_col = [col for col in df.columns if col.lower() == "date"]
+    if not date_col:
+        st.error("❌ 'Date' column not found in the uploaded data.")
+        return pd.DataFrame()
+    
+    df.rename(columns={date_col[0]: "Date"}, inplace=True)
+    df["Date"] = pd.to_datetime(df["Date"])
     df["Month"] = df["Date"].dt.to_period("M").astype(str)
     return df
 
 demand_data = load_data()
 
-# ---------------------- SIDEBAR ----------------------
-st.sidebar.title("🔍 Filters")
+if demand_data.empty:
+    st.stop()
 
-# Filters
-region_filter = st.sidebar.multiselect(
-    "Select Region(s)", options=demand_data["Region"].unique(),
-    default=demand_data["Region"].unique()
-)
+# --------- SIDEBAR: Filters & Navigation ---------
+with st.sidebar:
+    st.title("🔍 Filters")
 
-capacity_filter = st.sidebar.multiselect(
-    "Select Capacity", options=demand_data["Capacity"].unique(),
-    default=demand_data["Capacity"].unique()
-)
+    region_filter = st.multiselect(
+        "Select Region(s)", options=demand_data["Region"].unique(),
+        default=demand_data["Region"].unique()
+    )
 
-type_filter = st.sidebar.multiselect(
-    "Select Type", options=demand_data["Type"].unique(),
-    default=demand_data["Type"].unique()
-)
+    capacity_filter = st.multiselect(
+        "Select Capacity", options=demand_data["Capacity"].unique(),
+        default=demand_data["Capacity"].unique()
+    )
 
-date_range = st.sidebar.date_input(
-    "Select Date Range",
-    [demand_data["Date"].min(), demand_data["Date"].max()]
-)
+    type_filter = st.multiselect(
+        "Select Type", options=demand_data["Type"].unique(),
+        default=demand_data["Type"].unique()
+    )
 
-# Navigation
-section = st.sidebar.radio("📂 Navigation", ["Demand Analysis", "Other Analysis"])
+    date_range = st.date_input(
+        "Select Date Range",
+        [demand_data["Date"].min(), demand_data["Date"].max()]
+    )
 
-# Apply filters
+    section = st.radio("📂 Navigation", ["Demand Analysis", "Other Analysis"])
+
+# --------- Filter Data ---------
 filtered_data = demand_data[
     (demand_data["Region"].isin(region_filter)) &
     (demand_data["Capacity"].isin(capacity_filter)) &
@@ -49,7 +60,7 @@ filtered_data = demand_data[
     (demand_data["Date"].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])))
 ]
 
-# ---------------------- MAIN: DEMAND ANALYSIS ----------------------
+# --------- DEMAND ANALYSIS ---------
 if section == "Demand Analysis":
     st.title("📦 PET Bottle Demand Analysis")
     st.markdown("Explore trends in PET bottle demand across regions, capacities, and types.")
@@ -58,14 +69,12 @@ if section == "Demand Analysis":
     # KPIs
     st.subheader("🔹 Demand KPIs")
     col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Total Records", filtered_data.shape[0])
-    with col2:
-        st.metric("Regions", filtered_data["Region"].nunique())
-    with col3:
-        st.metric("Capacities", filtered_data["Capacity"].nunique())
-    with col4:
-        st.metric("Types", filtered_data["Type"].nunique())
+    col1.metric("Total Records", filtered_data.shape[0])
+    col2.metric("Regions", filtered_data["Region"].nunique())
+    col3.metric("Capacities", filtered_data["Capacity"].nunique())
+    col4.metric("Types", filtered_data["Type"].nunique())
+
+    st.markdown("---")
 
     # Line Chart: Demand Over Time
     st.subheader("📈 Demand Over Time (Monthly)")
@@ -107,7 +116,13 @@ if section == "Demand Analysis":
     )
     st.plotly_chart(fig_type, use_container_width=True)
 
-# ---------------------- MAIN: PLACEHOLDER FOR FUTURE ----------------------
+# --------- OTHER ANALYSIS ---------
 elif section == "Other Analysis":
-    st.title("🛠️ Future Analysis")
-    st.markdown("Other analyses (like prediction, port data, raw material pricing) will be added here.")
+    st.title("🛠️ Future Analysis Placeholder")
+    st.markdown("""
+    This section will include future analysis such as:
+    - 📊 Port Data Analysis  
+    - 💰 Raw Material Price Trends  
+    - 🤖 Forecasting and Predictive Modeling  
+    - 🌐 Regional Supply Chain Insights
+    """)
