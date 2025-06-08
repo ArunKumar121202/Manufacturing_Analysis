@@ -5,17 +5,22 @@ import plotly.express as px
 # Page configuration
 st.set_page_config(page_title="PET Bottle Demand Dashboard", layout="wide")
 
-# --------- Load Data ---------
-data = pd.read_csv("Demand.csv")  # Update this if needed
+# --------- Load and Clean Data ---------
+data = pd.read_csv("Demand.csv")
 
-# Clean column names
+# Clean column names to avoid space-related errors
 data.columns = data.columns.str.strip()
+
+# Confirm the exact name of the date column
+if "Date_of_requirement" not in data.columns:
+    st.error(f"⚠️ 'Date_of_requirement' column not found. Columns present: {data.columns.tolist()}")
+    st.stop()
 
 # Convert date column
 data["Date"] = pd.to_datetime(data["Date_of_requirement"])
 data["Month"] = data["Date"].dt.to_period("M").astype(str)
 
-# --------- SIDEBAR: Filters & Navigation ---------
+# --------- SIDEBAR: Filters ---------
 with st.sidebar:
     st.title("🔍 Filters")
 
@@ -105,13 +110,4 @@ if section == "Demand Analysis":
     )
     st.plotly_chart(fig_type, use_container_width=True)
 
-# --------- OTHER ANALYSIS ---------
-elif section == "Other Analysis":
-    st.title("🛠️ Future Analysis Placeholder")
-    st.markdown("""
-    This section will include future analysis such as:
-    - 📊 Port Data Analysis  
-    - 💰 Raw Material Price Trends  
-    - 🤖 Forecasting and Predictive Modeling  
-    - 🌐 Regional Supply Chain Insights
-    """)
+# ---------
