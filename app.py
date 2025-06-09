@@ -17,13 +17,9 @@ data.rename(columns={
     "Volume (Million Pieces)": "Volume_Million_Pieces"
 }, inplace=True)
 
-# Convert Date and filter for 2019
+# Convert Date and extract Month
 data["Date"] = pd.to_datetime(data["Date"], errors='coerce')
-data = data[data["Date"].dt.year == 2019].copy()
-
-# Extract Month and Day
 data["Month"] = data["Date"].dt.month_name()
-data["Day"] = data["Date"].dt.day
 
 # ---------- Normalize Capacity ----------
 capacity_map = {
@@ -65,9 +61,14 @@ with st.sidebar:
         default=sorted(data["Type"].unique())
     )
 
-    day_filter = st.multiselect(
-        "Select Day(s)", options=sorted(data["Day"].unique()),
-        default=sorted(data["Day"].unique())
+    month_order = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ]
+
+    month_filter = st.multiselect(
+        "Select Month(s)", options=month_order,
+        default=month_order
     )
 
 # ---------- Apply Filters ----------
@@ -75,11 +76,11 @@ filtered_data = data[
     (data["Region"].isin(region_filter)) &
     (data["Capacity"].isin(capacity_filter)) &
     (data["Type"].isin(type_filter)) &
-    (data["Day"].isin(day_filter))
+    (data["Month"].isin(month_filter))
 ]
 
 # ---------- Main Content ----------
-st.title("📦 PET Bottle Demand Dashboard - 2019")
+st.title("📦 PET Bottle Demand Dashboard")
 
 # ---------- KPIs ----------
 st.subheader("🔹 Key Performance Indicators")
@@ -96,10 +97,6 @@ tab1, tab2 = st.tabs(["📈 Demand Analysis", "🛠️ Coming Soon"])
 
 with tab1:
     st.subheader("📅 Monthly Demand Trend")
-    month_order = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-    ]
     monthly_data = (
         filtered_data.groupby("Month")["Volume_Million_Pieces"]
         .sum()
@@ -108,7 +105,7 @@ with tab1:
         .dropna()
     )
     fig_line = px.line(monthly_data, x="Month", y="Volume_Million_Pieces", markers=True,
-                       title="Monthly PET Bottle Demand (2019)")
+                       title="Monthly PET Bottle Demand")
     st.plotly_chart(fig_line, use_container_width=True)
 
     st.subheader("🌍 Region vs Month Heatmap")
