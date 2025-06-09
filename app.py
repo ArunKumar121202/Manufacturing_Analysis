@@ -9,7 +9,7 @@ st.set_page_config(page_title="PET Bottle Demand Dashboard", layout="wide")
 data = pd.read_csv("Demand.csv")
 data.columns = data.columns.str.strip()
 
-# Rename for convenience
+# Rename columns
 data.rename(columns={
     "Date of requirement": "Date",
     "PET bottle capacity": "Capacity",
@@ -17,7 +17,7 @@ data.rename(columns={
     "Volume (Million Pieces)": "Volume_Million_Pieces"
 }, inplace=True)
 
-# Convert date and filter for 2019 only
+# Convert Date and filter for 2019
 data["Date"] = pd.to_datetime(data["Date"], errors='coerce')
 data = data[data["Date"].dt.year == 2019].copy()
 
@@ -25,23 +25,44 @@ data = data[data["Date"].dt.year == 2019].copy()
 data["Month"] = data["Date"].dt.month_name()
 data["Day"] = data["Date"].dt.day
 
+# ---------- Normalize Capacity ----------
+capacity_map = {
+    "44cl": "44cl", "12Oz": "12 oz", "56,8cl": "56.8cl", "19Oz": "19 oz",
+    "50cl": "50cl", "355ml": "355ml", "8oz Sleek": "8 oz sleek", "10 OZ": "10 oz",
+    "25oz": "25 oz", "8 OZ": "8 oz", "11Oz": "11 oz", "11 OZ": "11 oz",
+    "24 OZ": "24 oz", "25cl": "25cl", "10.5Oz": "10.5 oz", "9Oz": "9 oz",
+    "33cl": "33cl", "310ml": "310ml", "16 OZ": "16 oz", "32oz": "32 oz",
+    "500ml": "500ml", "16Oz": "16 oz", "330ml": "330ml", "25 OZ": "25 oz",
+    "12oz Sleek": "12 oz sleek", "15cl": "15cl", "270ml": "270ml", 
+    "12 OZ": "12 oz", "12oz": "12 oz", "16oz": "16 oz"
+}
+data["Capacity"] = data["Capacity"].str.strip().map(capacity_map).fillna(data["Capacity"].str.strip().str.lower())
+
+# ---------- Normalize Type ----------
+type_map = {
+    "Standard": "Standard", "SLEEK": "Sleek", "BIG CAN": "Big Can",
+    "Big Can": "Big Can", "Slim": "Slim", "Sleek": "Sleek", 
+    "STANDARD": "Standard", "Embossed": "Embossed"
+}
+data["Type"] = data["Type"].str.strip().map(type_map).fillna(data["Type"].str.strip().str.title())
+
 # ---------- Sidebar Filters ----------
 with st.sidebar:
     st.title("🔍 Filters")
 
     region_filter = st.multiselect(
-        "Select Region(s)", options=data["Region"].unique(),
-        default=data["Region"].unique()
+        "Select Region(s)", options=sorted(data["Region"].unique()),
+        default=sorted(data["Region"].unique())
     )
 
     capacity_filter = st.multiselect(
-        "Select Capacity", options=data["Capacity"].unique(),
-        default=data["Capacity"].unique()
+        "Select Capacity", options=sorted(data["Capacity"].unique()),
+        default=sorted(data["Capacity"].unique())
     )
 
     type_filter = st.multiselect(
-        "Select Type", options=data["Type"].unique(),
-        default=data["Type"].unique()
+        "Select Type", options=sorted(data["Type"].unique()),
+        default=sorted(data["Type"].unique())
     )
 
     day_filter = st.multiselect(
