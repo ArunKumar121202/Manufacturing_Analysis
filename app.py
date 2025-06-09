@@ -84,10 +84,20 @@ st.title("📦 PET Bottle Demand Dashboard - 2019")
 # ---------- KPIs ----------
 st.subheader("🔹 Key Performance Indicators")
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total Records", filtered_data.shape[0])
-col2.metric("Regions", filtered_data["Region"].nunique())
-col3.metric("Capacities", filtered_data["Capacity"].nunique())
-col4.metric("Types", filtered_data["Type"].nunique())
+
+# Total Volume
+total_volume = filtered_data["Volume_Million_Pieces"].sum()
+
+# Country count fallback if 'Country' column not present
+if "Country" in filtered_data.columns:
+    country_count = filtered_data["Country"].nunique()
+else:
+    country_count = "N/A"
+
+col1.metric("Total Volume", f"{total_volume:.2f} Million Pieces")
+col2.metric("Countries", country_count)
+col3.metric("Regions", filtered_data["Region"].nunique())
+col4.metric("Capacities", filtered_data["Capacity"].nunique())
 
 st.markdown("---")
 
