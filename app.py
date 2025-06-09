@@ -83,21 +83,15 @@ st.title("📦 PET Bottle Demand Dashboard - 2019")
 
 # ---------- KPIs ----------
 st.subheader("🔹 Key Performance Indicators")
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns(3)
 
-# Total Volume
 total_volume = filtered_data["Volume_Million_Pieces"].sum()
+volume_display = f"{total_volume / 1_000:.2f}k (Million Pieces)"
+col1.metric("Total Volume", volume_display)
 
-# Country count fallback if 'Country' column not present
-if "Country" in filtered_data.columns:
-    country_count = filtered_data["Country"].nunique()
-else:
-    country_count = "N/A"
-
-col1.metric("Total Volume", f"{total_volume:.2f} Million Pieces")
-col2.metric("Countries", country_count)
-col3.metric("Regions", filtered_data["Region"].nunique())
-col4.metric("Capacities", filtered_data["Capacity"].nunique())
+col1.metric("Total Volume", volume_display + " Million Pieces")
+col2.metric("Regions", filtered_data["Region"].nunique())
+col3.metric("Countries", filtered_data["Country"].nunique() if "Country" in filtered_data.columns else "N/A")
 
 st.markdown("---")
 
@@ -125,9 +119,7 @@ with tab1:
         markers=True,
         title="Monthly PET Bottle Demand"
     )
-    fig_line.update_layout(
-        yaxis_tickformat=".2s"
-    )
+    fig_line.update_layout(yaxis_tickformat=".2s")
     fig_line.update_traces(
         text=[f"{v/1000:.2f}k" for v in monthly_data["Volume_Million_Pieces"]],
         textposition="top center",
