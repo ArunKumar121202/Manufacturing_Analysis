@@ -81,38 +81,33 @@ filtered_data = data[
 # ---------- Main Content ----------
 st.title("📦 PET Bottle Demand Dashboard - 2019")
 
-# ---------- KPIs ----------
-st.subheader("🔹 Key Performance Indicators")
-col1, col2, col3 = st.columns(3)
-col4, col5, col6 = st.columns(3)
-
-# 1. Total Volume
-total_volume = filtered_data["Volume_Million_Pieces"].sum()
-volume_display = f"{total_volume / 1_000:.2f}k (Million Pieces)"
-col1.metric("Total Volume", volume_display)
-
-# 2. Overall Average Volume Required
-avg_volume = filtered_data["Volume_Million_Pieces"].mean()
-col2.metric("Avg Volume Required", f"{avg_volume:.2f} Million Pieces")
-
-# 3. Total Capacities
-col3.metric("Total Capacities", filtered_data["Capacity"].nunique())
-
-# 4. Total Types
-col4.metric("Total Types", filtered_data["Type"].nunique())
-
-# 5. Total Countries
-col5.metric("Total Countries", filtered_data["Country"].nunique() if "Country" in filtered_data.columns else "N/A")
-
-# 6. Total Regions
-col6.metric("Total Regions", filtered_data["Region"].nunique())
-
-st.markdown("---")
-
 # ---------- Analysis Tabs ----------
 tab1, tab2 = st.tabs(["📈 Demand Analysis", "🛠️ Coming Soon"])
 
 with tab1:
+    # ---------- KPIs ----------
+    st.subheader("🔹 Key Performance Indicators")
+
+    col1, col2, col3 = st.columns(3)
+    col4, col5, col6 = st.columns(3)
+
+    total_volume = filtered_data["Volume_Million_Pieces"].sum()
+    avg_volume = filtered_data.groupby("Month")["Volume_Million_Pieces"].sum().mean()
+    unique_capacities = filtered_data["Capacity"].nunique()
+    unique_types = filtered_data["Type"].nunique()
+    unique_countries = filtered_data["Country"].nunique() if "Country" in filtered_data.columns else "N/A"
+    unique_regions = filtered_data["Region"].nunique()
+
+    col1.metric("Total Volume", f"{total_volume:.2f} Million Pieces")
+    col2.metric("Average Monthly Volume", f"{avg_volume:.2f} Million Pieces")
+    col3.metric("Total Capacities", unique_capacities)
+    col4.metric("Total Types", unique_types)
+    col5.metric("Total Countries", unique_countries)
+    col6.metric("Total Regions", unique_regions)
+
+    st.markdown("---")
+
+    # ---------- Monthly Demand Trend ----------
     st.subheader("📅 Monthly Demand Trend")
     month_order = [
         "January", "February", "March", "April", "May", "June",
@@ -141,6 +136,7 @@ with tab1:
     )
     st.plotly_chart(fig_line, use_container_width=True)
 
+    # ---------- Region vs Month Heatmap ----------
     st.subheader("🌍 Region vs Month Heatmap")
     heatmap_data = filtered_data.groupby(["Region", "Month"])["Volume_Million_Pieces"].sum().reset_index()
     heatmap_data["Month"] = pd.Categorical(heatmap_data["Month"], categories=month_order, ordered=True)
@@ -155,6 +151,7 @@ with tab1:
     fig_heatmap.update_layout(coloraxis_colorbar_tickformat=".2s")
     st.plotly_chart(fig_heatmap, use_container_width=True)
 
+    # ---------- Capacity-wise Demand ----------
     st.subheader("🧪 Capacity-wise Demand")
     cap_data = filtered_data.groupby("Capacity")["Volume_Million_Pieces"].sum().reset_index()
     fig_cap = px.bar(
@@ -167,6 +164,7 @@ with tab1:
     fig_cap.update_layout(yaxis_tickformat=".2s")
     st.plotly_chart(fig_cap, use_container_width=True)
 
+    # ---------- Type-wise Demand ----------
     st.subheader("🧱 Type-wise Demand")
     type_data = filtered_data.groupby("Type")["Volume_Million_Pieces"].sum().reset_index()
     fig_type = px.bar(
