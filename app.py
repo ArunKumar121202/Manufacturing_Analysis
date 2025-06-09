@@ -98,8 +98,8 @@ with tab1:
     unique_countries = filtered_data["Country"].nunique() if "Country" in filtered_data.columns else "N/A"
     unique_regions = filtered_data["Region"].nunique()
 
-    col1.metric("Total Volume", f"{total_volume:.2f} Million Pieces")
-    col2.metric("Average Monthly Volume", f"{avg_volume:.2f} Million Pieces")
+    col1.metric("Total Volume", f"{total_volume / 1000:.2f} K")
+    col2.metric("Average Monthly Volume", f"{avg_volume / 1000:.2f} K")
     col3.metric("Total Capacities", unique_capacities)
     col4.metric("Total Types", unique_types)
     col5.metric("Total Countries", unique_countries)
