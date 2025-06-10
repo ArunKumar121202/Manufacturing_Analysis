@@ -8,7 +8,7 @@ st.set_page_config(page_title="PET Bottle Demand Dashboard", layout="wide")
 # ---------- Load & Clean Data ----------
 data = pd.read_csv("Demand.csv")
 data.columns = data.columns.str.strip()
-
+raw_data=pd.read_csv("Raw Material Prices.csv")
 # Rename for convenience
 data.rename(columns={
     "Date of requirement": "Date",
@@ -75,10 +75,10 @@ filtered_data = data[
 ]
 
 # ---------- Main Title ----------
-st.title("📦 PET Bottle Demand Dashboard - 2019")
+st.title("📦 PET Bottle Demand Dashboard")
 
 # ---------- Tabs ----------
-tab1, tab2 = st.tabs(["📈 Demand Analysis", "🔗 Supply Chain Demand"])
+tab1, tab2 = st.tabs(["📈 Demand Analysis", "🔗 Raw Material Pricing Trends"])
 
 # ---------- TAB 1: Demand Analysis ----------
 with tab1:
