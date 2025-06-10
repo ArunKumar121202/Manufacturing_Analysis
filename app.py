@@ -168,66 +168,88 @@ with tab1:
 # ---------- TAB 2: Raw Material Pricing Trends ----------
 with tab2:
     st.subheader("📊 Raw Material Pricing Trends")
-    st.write("Raw Data Columns:", raw_data.columns.tolist())
-    # ---------- Clean Raw Material Data ----------
-    raw_data.columns = raw_data.columns.str.strip()
-    raw_data["Month"] = pd.to_datetime(raw_data["Month"], format="%b-%y", errors='coerce')
-    raw_data = raw_data.dropna(subset=["Month"])
-    
-    # Rename for ease
-    pet_col = "PET : Poly Ethylene Terephthalate USD/MT"
-    raw_data.rename(columns={pet_col: "PET_Price"}, inplace=True)
-    
-    # Add year & month columns
-    raw_data["Year"] = raw_data["Month"].dt.year
-    raw_data["Month_Name"] = raw_data["Month"].dt.strftime('%B')
-    raw_data["Month_Num"] = raw_data["Month"].dt.month
-    
-    # ---------- KPIs ----------
-    col1, col2, col3, col4 = st.columns(4)
-    
+
+    # Clean column names
+    raw_data.columns = raw_data.columns.str.replace("\n", " ").str.strip()
+
+    # Rename PET price column
+    raw_data.rename(columns={
+        "PET : Poly Ethylene Terephthalate USD/MT": "PET_Price"
+    }, inplace=True)
+
+    # Ensure Month is string
+    raw_data["Month"] = raw_data["Month"].astype(str).str.strip()
+
+    # Convert PET price to numeric
+    raw_data["PET_Price"] = pd.to_numeric(raw_data["PET_Price"], errors="coerce")
+
+    # KPI 1: Average PET price
     avg_pet = raw_data["PET_Price"].mean()
-    latest_pet = raw_data.sort_values("Month")["PET_Price"].iloc[-1]
-    highest_pet = raw_data["PET_Price"].max()
-    yoy_change = raw_data.groupby("Year")["PET_Price"].mean().pct_change().iloc[-1] * 100
-    
-    col1.metric("📊 Average PET Price", f"{avg_pet:.2f} USD/MT")
-    col2.metric("📈 Latest PET Price", f"{latest_pet:.2f} USD/MT")
-    col3.metric("🚀 Highest PET Price", f"{highest_pet:.2f} USD/MT")
-    col4.metric("📉 YoY Price Change", f"{yoy_change:.2f} %")
-    
+
+    # KPI 2: Most recent PET price (last row with valid value)
+    recent_pet = raw_data["PET_Price"].dropna().iloc[-1]
+
+    # KPI 3: Max PET price ever recorded
+    max_pet = raw_data["PET_Price"].max()
+
+    # KPI 4: YoY % change (Assuming data is sorted by month and spans multiple years)
+    raw_data["Year"] = pd.to_datetime(raw_data["Month"], errors="coerce").dt.year
+    yoy_change = None
+    if raw_data["Year"].nunique() >= 2:
+        yearly_avg = raw_data.groupby("Year")["PET_Price"].mean().sort_index()
+        if len(yearly_avg) >= 2:
+            yoy_change = ((yearly_avg.iloc[-1] - yearly_avg.iloc[-2]) / yearly_avg.iloc[-2]) * 100
+
+    # Display KPIs
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("📊 Average PET Price", f"${avg_pet:.2f}")
+    k2.metric("🕒 Recent PET Price", f"${recent_pet:.2f}")
+    k3.metric("📈 Max Recorded PET Price", f"${max_pet:.2f}")
+    k4.metric("🔁 YoY PET Price Change", f"{yoy_change:.2f}%" if yoy_change is not None else "N/A")
+
     st.markdown("---")
-    
-    # ---------- Line Chart: Monthly PET Prices ----------
-    st.subheader("📉 Monthly PET Price Trend")
-    monthly_fig = px.line(
-        raw_data.sort_values("Month"),
-        x="Month", y="PET_Price",
-        markers=True,
-        title="Monthly PET Price (USD/MT)"
+
+    # --- 1. Raw Material Prices Over Months ---
+    st.subheader("📉 Monthly Raw Material Price Trends")
+    monthwise = raw_data.copy()
+    fig_monthwise = px.line(
+        monthwise.melt(id_vars="Month", value_vars=raw_data.columns[1:]),
+        x="Month", y="value", color="variable",
+        title="Raw Material Prices Over All Months"
     )
-    monthly_fig.update_layout(yaxis_title="USD/MT", xaxis_title="Month")
-    st.plotly_chart(monthly_fig, use_container_width=True)
-    
-    # ---------- Line Chart: Yearly Avg Prices ----------
-    st.subheader("📆 Yearly Average PET Price")
-    yearly_avg = raw_data.groupby("Year")["PET_Price"].mean().reset_index()
-    fig_year = px.bar(
-        yearly_avg, x="Year", y="PET_Price",
+    st.plotly_chart(fig_monthwise, use_container_width=True)
+
+    # --- 2. Raw Material Prices Over Years ---
+    st.subheader("📈 Yearly Raw Material Price Trends")
+    yearly = raw_data.copy()
+    yearly["Year"] = pd.to_datetime(yearly["Month"], errors="coerce").dt.year
+    fig_yearwise = px.line(
+        yearly.melt(id_vars="Year", value_vars=raw_data.columns[1:]),
+        x="Year", y="value", color="variable",
+        title="Raw Material Prices Over All Years"
+    )
+    st.plotly_chart(fig_yearwise, use_container_width=True)
+
+    # --- 3. Average PET Price by Year ---
+    st.subheader("📊 Average PET Prices by Year")
+    pet_by_year = raw_data.groupby("Year")["PET_Price"].mean().reset_index()
+    fig_pet_year = px.bar(
+        pet_by_year, x="Year", y="PET_Price",
         title="Average PET Price by Year",
         text_auto=".2f"
     )
-    fig_year.update_layout(yaxis_title="USD/MT")
-    st.plotly_chart(fig_year, use_container_width=True)
-    
-    # ---------- Multi-line Chart: All Raw Materials ----------
-    st.subheader("📊 Raw Material Prices Over Time")
-    raw_materials_long = raw_data.melt(id_vars=["Month"], var_name="Material", value_name="Price")
-    fig_all = px.line(
-        raw_materials_long.dropna(),
-        x="Month", y="Price", color="Material",
-        title="Raw Material Prices Over Time",
-        markers=True
+    st.plotly_chart(fig_pet_year, use_container_width=True)
+
+    # --- 4. Monthly Average PET Prices ---
+    st.subheader("🗓️ Monthly Average PET Prices")
+    raw_data["Month_Name"] = pd.to_datetime(raw_data["Month"], errors="coerce").dt.strftime('%B')
+    pet_by_month = raw_data.groupby("Month_Name")["PET_Price"].mean().reindex([
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ]).reset_index()
+    fig_pet_month = px.bar(
+        pet_by_month, x="Month_Name", y="PET_Price",
+        title="Average PET Price by Month",
+        text_auto=".2f"
     )
-    fig_all.update_layout(yaxis_title="USD/MT")
-    st.plotly_chart(fig_all, use_container_width=True)
+    st.plotly_chart(fig_pet_month, use_container_width=True)
