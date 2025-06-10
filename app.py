@@ -168,7 +168,7 @@ with tab1:
 # ---------- TAB 2: Raw Material Pricing Trends ----------
 with tab2:
     st.subheader("📊 Raw Material Pricing Trends")
-
+    st.write("Raw Material Columns:", raw_data.columns.tolist())
     # Clean column names
     raw_data.columns = raw_data.columns.str.replace("\n", " ").str.strip()
 
