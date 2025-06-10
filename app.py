@@ -172,11 +172,15 @@ with tab2:
     # Clean column names
     raw_data.columns = raw_data.columns.str.replace("\n", " ").str.strip()
 
-    # Rename PET price column
-    raw_data.rename(columns={
-        "PET : Poly Ethylene Terephthalate USD/MT": "PET_Price"
-    }, inplace=True)
-
+    # Clean column names
+    raw_data.columns = raw_data.columns.str.replace("\n", " ").str.strip()
+    
+    # Dynamically rename any column containing "PET" and "Poly Ethylene"
+    for col in raw_data.columns:
+        if "PET" in col and "Poly Ethylene" in col:
+            raw_data.rename(columns={col: "PET_Price"}, inplace=True)
+            break
+            
     # Ensure Month is string
     raw_data["Month"] = raw_data["Month"].astype(str).str.strip()
 
