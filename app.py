@@ -168,6 +168,7 @@ with tab1:
 # ---------- TAB 2: Raw Material Pricing Trends ----------
 with tab2:
     st.subheader("📊 Raw Material Pricing Trends")
+    st.write("Raw Data Columns:", raw_data.columns.tolist())
     # ---------- Clean Raw Material Data ----------
     raw_data.columns = raw_data.columns.str.strip()
     raw_data["Month"] = pd.to_datetime(raw_data["Month"], format="%b-%y", errors='coerce')
