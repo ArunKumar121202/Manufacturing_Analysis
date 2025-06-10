@@ -168,68 +168,77 @@ with tab1:
 # ---------- TAB 2: Raw Material Pricing Trends ----------
 with tab2:
     st.subheader("📊 Raw Material Pricing Trends")
-    # Clean column names
-    raw_data.columns = raw_data.columns.str.replace("\n", " ").str.strip()
 
     # Clean column names
     raw_data.columns = raw_data.columns.str.replace("\n", " ").str.strip()
-    
-    # Dynamically rename any column containing "PET" and "Poly Ethylene"
+
+    # Dynamically rename PET price column
     for col in raw_data.columns:
         if "PET" in col and "Poly Ethylene" in col:
             raw_data.rename(columns={col: "PET_Price"}, inplace=True)
             break
-            
-    # Ensure Month is string
-    raw_data["Month"] = raw_data["Month"].astype(str).str.strip()
 
-    # Convert PET price to numeric
+    # Convert Month to datetime
+    raw_data["Month"] = pd.to_datetime(raw_data["Month"], errors="coerce")
+
+    # Convert PET_Price to numeric
     raw_data["PET_Price"] = pd.to_numeric(raw_data["PET_Price"], errors="coerce")
+
+    # Convert all other raw material prices to numeric
+    for col in raw_data.columns:
+        if col not in ["Month", "PET_Price"]:
+            raw_data[col] = pd.to_numeric(raw_data[col], errors="coerce")
 
     # KPI 1: Average PET price
     avg_pet = raw_data["PET_Price"].mean()
 
-    # KPI 2: Most recent PET price (last row with valid value)
-    recent_pet = raw_data["PET_Price"].dropna().iloc[-1]
+    # KPI 2: Most recent PET price (based on latest month)
+    latest_row = raw_data.dropna(subset=["PET_Price"]).sort_values("Month").iloc[-1]
+    recent_pet = latest_row["PET_Price"]
+    recent_pet_month = latest_row["Month"].strftime("%B %Y")
 
     # KPI 3: Max PET price ever recorded
     max_pet = raw_data["PET_Price"].max()
 
-    # KPI 4: YoY % change (Assuming data is sorted by month and spans multiple years)
-    raw_data["Year"] = pd.to_datetime(raw_data["Month"], errors="coerce").dt.year
+    # KPI 4: YoY % change
+    raw_data["Year"] = raw_data["Month"].dt.year
     yoy_change = None
-    if raw_data["Year"].nunique() >= 2:
-        yearly_avg = raw_data.groupby("Year")["PET_Price"].mean().sort_index()
-        if len(yearly_avg) >= 2:
-            yoy_change = ((yearly_avg.iloc[-1] - yearly_avg.iloc[-2]) / yearly_avg.iloc[-2]) * 100
+    yearly_avg = raw_data.groupby("Year")["PET_Price"].mean().sort_index()
+    if len(yearly_avg) >= 2:
+        yoy_change = ((yearly_avg.iloc[-1] - yearly_avg.iloc[-2]) / yearly_avg.iloc[-2]) * 100
 
     # Display KPIs
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("📊 Average PET Price", f"${avg_pet:.2f}")
-    k2.metric("🕒 Recent PET Price", f"${recent_pet:.2f}")
+    k2.metric("🕒 Recent PET Price", f"${recent_pet:.2f}", delta=recent_pet_month)
     k3.metric("📈 Max Recorded PET Price", f"${max_pet:.2f}")
     k4.metric("🔁 YoY PET Price Change", f"{yoy_change:.2f}%" if yoy_change is not None else "N/A")
 
     st.markdown("---")
 
-    # --- 1. Raw Material Prices Over Months ---
+    # --- 1. Raw Material Prices Summed by Month Name ---
     st.subheader("📉 Monthly Raw Material Price Trends")
-    monthwise = raw_data.copy()
+    raw_data["Month_Name"] = raw_data["Month"].dt.strftime('%B')
+    monthwise_sum = raw_data.groupby("Month_Name")[raw_data.columns[1:]].sum().reindex([
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ])
+
     fig_monthwise = px.line(
-        monthwise.melt(id_vars="Month", value_vars=raw_data.columns[1:]),
-        x="Month", y="value", color="variable",
-        title="Raw Material Prices Over All Months"
+        monthwise_sum.reset_index().melt(id_vars="Month_Name"),
+        x="Month_Name", y="value", color="variable",
+        title="Total Raw Material Prices by Month"
     )
     st.plotly_chart(fig_monthwise, use_container_width=True)
 
-    # --- 2. Raw Material Prices Over Years ---
+    # --- 2. Raw Material Prices Summed by Year ---
     st.subheader("📈 Yearly Raw Material Price Trends")
-    yearly = raw_data.copy()
-    yearly["Year"] = pd.to_datetime(yearly["Month"], errors="coerce").dt.year
+    yearwise_sum = raw_data.groupby("Year")[raw_data.columns[1:]].sum().reset_index()
+
     fig_yearwise = px.line(
-        yearly.melt(id_vars="Year", value_vars=raw_data.columns[1:]),
+        yearwise_sum.melt(id_vars="Year"),
         x="Year", y="value", color="variable",
-        title="Raw Material Prices Over All Years"
+        title="Total Raw Material Prices by Year"
     )
     st.plotly_chart(fig_yearwise, use_container_width=True)
 
@@ -245,7 +254,6 @@ with tab2:
 
     # --- 4. Monthly Average PET Prices ---
     st.subheader("🗓️ Monthly Average PET Prices")
-    raw_data["Month_Name"] = pd.to_datetime(raw_data["Month"], errors="coerce").dt.strftime('%B')
     pet_by_month = raw_data.groupby("Month_Name")["PET_Price"].mean().reindex([
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
