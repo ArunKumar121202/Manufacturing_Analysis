@@ -181,13 +181,14 @@ with tab2:
     # Convert Month to datetime
     raw_data["Month"] = pd.to_datetime(raw_data["Month"], errors="coerce")
 
-    # Convert PET_Price to numeric
-    raw_data["PET_Price"] = pd.to_numeric(raw_data["PET_Price"], errors="coerce")
-
-    # Convert all other raw material prices to numeric
+    # Convert PET_Price and other material prices to numeric
     for col in raw_data.columns:
-        if col not in ["Month", "PET_Price"]:
+        if col != "Month":
             raw_data[col] = pd.to_numeric(raw_data[col], errors="coerce")
+
+    # Add Year and Month_Name columns
+    raw_data["Year"] = raw_data["Month"].dt.year
+    raw_data["Month_Name"] = raw_data["Month"].dt.strftime('%B')
 
     # KPI 1: Average PET price
     avg_pet = raw_data["PET_Price"].mean()
@@ -201,7 +202,6 @@ with tab2:
     max_pet = raw_data["PET_Price"].max()
 
     # KPI 4: YoY % change
-    raw_data["Year"] = raw_data["Month"].dt.year
     yoy_change = None
     yearly_avg = raw_data.groupby("Year")["PET_Price"].mean().sort_index()
     if len(yearly_avg) >= 2:
@@ -218,12 +218,11 @@ with tab2:
 
     # --- 1. Raw Material Prices Summed by Month Name ---
     st.subheader("📉 Monthly Raw Material Price Trends")
-    raw_data["Month_Name"] = raw_data["Month"].dt.strftime('%B')
-    monthwise_sum = raw_data.groupby("Month_Name")[raw_data.columns[1:]].sum().reindex([
+    material_cols = [col for col in raw_data.columns if col not in ["Month", "Year", "Month_Name", "PET_Price"]]
+    monthwise_sum = raw_data.groupby("Month_Name")[material_cols].sum().reindex([
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     ])
-
     fig_monthwise = px.line(
         monthwise_sum.reset_index().melt(id_vars="Month_Name"),
         x="Month_Name", y="value", color="variable",
@@ -233,8 +232,7 @@ with tab2:
 
     # --- 2. Raw Material Prices Summed by Year ---
     st.subheader("📈 Yearly Raw Material Price Trends")
-    yearwise_sum = raw_data.groupby("Year")[raw_data.columns[1:]].sum().reset_index()
-
+    yearwise_sum = raw_data.groupby("Year")[material_cols].sum().reset_index()
     fig_yearwise = px.line(
         yearwise_sum.melt(id_vars="Year"),
         x="Year", y="value", color="variable",
@@ -264,3 +262,4 @@ with tab2:
         text_auto=".2f"
     )
     st.plotly_chart(fig_pet_month, use_container_width=True)
+
