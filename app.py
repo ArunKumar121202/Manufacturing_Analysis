@@ -168,4 +168,65 @@ with tab1:
 # ---------- TAB 2: Raw Material Pricing Trends ----------
 with tab2:
     st.subheader("📊 Raw Material Pricing Trends")
-
+    # ---------- Clean Raw Material Data ----------
+    raw_data.columns = raw_data.columns.str.strip()
+    raw_data["Month"] = pd.to_datetime(raw_data["Month"], format="%b-%y", errors='coerce')
+    raw_data = raw_data.dropna(subset=["Month"])
+    
+    # Rename for ease
+    pet_col = "PET : Poly Ethylene Terephthalate USD/MT"
+    raw_data.rename(columns={pet_col: "PET_Price"}, inplace=True)
+    
+    # Add year & month columns
+    raw_data["Year"] = raw_data["Month"].dt.year
+    raw_data["Month_Name"] = raw_data["Month"].dt.strftime('%B')
+    raw_data["Month_Num"] = raw_data["Month"].dt.month
+    
+    # ---------- KPIs ----------
+    col1, col2, col3, col4 = st.columns(4)
+    
+    avg_pet = raw_data["PET_Price"].mean()
+    latest_pet = raw_data.sort_values("Month")["PET_Price"].iloc[-1]
+    highest_pet = raw_data["PET_Price"].max()
+    yoy_change = raw_data.groupby("Year")["PET_Price"].mean().pct_change().iloc[-1] * 100
+    
+    col1.metric("📊 Average PET Price", f"{avg_pet:.2f} USD/MT")
+    col2.metric("📈 Latest PET Price", f"{latest_pet:.2f} USD/MT")
+    col3.metric("🚀 Highest PET Price", f"{highest_pet:.2f} USD/MT")
+    col4.metric("📉 YoY Price Change", f"{yoy_change:.2f} %")
+    
+    st.markdown("---")
+    
+    # ---------- Line Chart: Monthly PET Prices ----------
+    st.subheader("📉 Monthly PET Price Trend")
+    monthly_fig = px.line(
+        raw_data.sort_values("Month"),
+        x="Month", y="PET_Price",
+        markers=True,
+        title="Monthly PET Price (USD/MT)"
+    )
+    monthly_fig.update_layout(yaxis_title="USD/MT", xaxis_title="Month")
+    st.plotly_chart(monthly_fig, use_container_width=True)
+    
+    # ---------- Line Chart: Yearly Avg Prices ----------
+    st.subheader("📆 Yearly Average PET Price")
+    yearly_avg = raw_data.groupby("Year")["PET_Price"].mean().reset_index()
+    fig_year = px.bar(
+        yearly_avg, x="Year", y="PET_Price",
+        title="Average PET Price by Year",
+        text_auto=".2f"
+    )
+    fig_year.update_layout(yaxis_title="USD/MT")
+    st.plotly_chart(fig_year, use_container_width=True)
+    
+    # ---------- Multi-line Chart: All Raw Materials ----------
+    st.subheader("📊 Raw Material Prices Over Time")
+    raw_materials_long = raw_data.melt(id_vars=["Month"], var_name="Material", value_name="Price")
+    fig_all = px.line(
+        raw_materials_long.dropna(),
+        x="Month", y="Price", color="Material",
+        title="Raw Material Prices Over Time",
+        markers=True
+    )
+    fig_all.update_layout(yaxis_title="USD/MT")
+    st.plotly_chart(fig_all, use_container_width=True)
