@@ -290,18 +290,3 @@ with tab4:
     quarterly_volume = filtered_data.groupby("Quarter")["Volume_Million_Pieces"].sum().reset_index()
     fig_quarter = px.bar(quarterly_volume, x="Quarter", y="Volume_Million_Pieces", text_auto=".2s")
     st.plotly_chart(fig_quarter, use_container_width=True)
-
-    st.subheader("🏭 Volume Supplied by Each Blowing Plant")
-    merged_filtered = filtered_data.merge(Port, how="left", left_on="Region", right_on="region")
-    merged_filtered = merged_filtered[merged_filtered["blowing_plant"].isin(plant_filter)]
-    plant_volume = (
-        merged_filtered.groupby("blowing_plant")["Volume_Million_Pieces"]
-        .sum().reset_index().sort_values(by="Volume_Million_Pieces", ascending=False)
-    )
-    fig_plant_volume = px.bar(
-        plant_volume, x="blowing_plant", y="Volume_Million_Pieces", text_auto=".2s",
-        title="Volume Supplied by Each Blowing Plant",
-        labels={"blowing_plant": "Blowing Plant", "Volume_Million_Pieces": "Volume (Million Pieces)"}
-    )
-    fig_plant_volume.update_layout(yaxis_tickformat=".2s")
-    st.plotly_chart(fig_plant_volume, use_container_width=True)
