@@ -80,7 +80,7 @@ st.title("📦 PET Bottle Demand Dashboard")
 
 # ---------- Tabs ----------
 tab1, tab2 = st.tabs(["📈 Demand Analysis", "🔗 Raw Material Pricing Trends"])
-
+tab3, tab4 = st.tabs(["📊 Correlation Analysis", "⚙️ Comparative & Supply Chain Demand"])
 # ---------- TAB 1: Demand Analysis ----------
 with tab1:
     st.subheader("🔹 Key Performance Indicators")
@@ -264,4 +264,93 @@ with tab2:
         text_auto=".2f"
     )
     st.plotly_chart(fig_pet_month, use_container_width=True)
+with tab3:
+    st.subheader("🔄 Correlation Analysis with Target Variable")
 
+    numeric_cols = filtered_data.select_dtypes(include='number').drop(columns=['Volume_Million_Pieces'], errors='ignore')
+    corr_df = filtered_data[numeric_cols.columns.tolist() + ['Volume_Million_Pieces']].corr()
+
+    fig_corr = px.imshow(
+        corr_df,
+        text_auto=True,
+        aspect="auto",
+        title="Correlation Matrix",
+        color_continuous_scale='RdBu_r'
+    )
+    st.plotly_chart(fig_corr, use_container_width=True)
+with tab4:
+    st.subheader("⚙️ Comparative & Supply Chain Demand Analysis")
+
+    # Clean Port data
+    Port.columns = Port.columns.str.strip().str.title()
+    Port.rename(columns={"Region": "Region", "Blowing Plant": "Blowing_Plant"}, inplace=True)
+    Port["Region"] = Port["Region"].str.strip().str.title()
+    Port["Blowing_Plant"] = Port["Blowing_Plant"].str.strip().str.title()
+
+    # Merge demand and port data on Region
+    merged_data = pd.merge(filtered_data.copy(), Port[["Region", "Blowing_Plant"]].drop_duplicates(), on="Region", how="left")
+
+    # ---------- Sidebar Filter ----------
+    blowing_plant_filter = st.sidebar.multiselect(
+        "Select Blowing Plant(s)",
+        options=sorted(Port["Blowing_Plant"].dropna().unique()),
+        default=sorted(Port["Blowing_Plant"].dropna().unique())
+    )
+
+    merged_data = merged_data[merged_data["Blowing_Plant"].isin(blowing_plant_filter)]
+
+    # ---------- KPIs ----------
+    k1, k2, k3, k4 = st.columns(4)
+
+    top_capacity = merged_data.groupby("Capacity")["Volume_Million_Pieces"].sum().idxmax()
+    top_weight = merged_data.groupby("Weight_grams")["Volume_Million_Pieces"].sum().idxmax()
+    total_plants = Port["Blowing_Plant"].nunique()
+    avg_volume = merged_data["Volume_Million_Pieces"].mean()
+
+    k1.metric("🏆 Top Capacity", top_capacity)
+    k2.metric("🥇 Top Bottle Weight", f"{top_weight:.1f} g")
+    k3.metric("🏭 Total Blowing Plants", total_plants)
+    k4.metric("📦 Avg. Volume Required", f"{avg_volume:.2f} Million")
+
+    st.markdown("---")
+
+    # ---------- Box Plot: Weight by Region ----------
+    st.subheader("⚖️ Average PET Bottle Weight by Region")
+    fig_box = px.box(
+        merged_data, x="Region", y="Weight_grams", color="Region",
+        title="Distribution of Bottle Weights by Region"
+    )
+    st.plotly_chart(fig_box, use_container_width=True)
+
+    # ---------- Bar Chart: Blowing Plants Count ----------
+    st.subheader("🏭 Count of Blowing Plants per Region")
+    plant_counts = Port.groupby("Region")["Blowing_Plant"].nunique().reset_index()
+    fig_plant = px.bar(
+        plant_counts, x="Region", y="Blowing_Plant", text_auto=True,
+        title="Number of Blowing Plants per Region", color="Region"
+    )
+    st.plotly_chart(fig_plant, use_container_width=True)
+
+    # ---------- Map Chart: Volume by Country ----------
+    st.subheader("🗺️ Volume Distribution by Country")
+    if "Country" in merged_data.columns:
+        country_volume = merged_data.groupby("Country")["Volume_Million_Pieces"].sum().reset_index()
+        fig_map = px.choropleth(
+            country_volume, locations="Country", locationmode="country names",
+            color="Volume_Million_Pieces", title="Total Volume by Country",
+            color_continuous_scale="Viridis"
+        )
+        st.plotly_chart(fig_map, use_container_width=True)
+    else:
+        st.warning("No country data available for map chart.")
+
+    # ---------- Quarterly Volume ----------
+    st.subheader("📆 Quarterly Volume Demand")
+    merged_data["Quarter"] = merged_data["Date"].dt.to_period("Q").astype(str)
+    quarter_volume = merged_data.groupby("Quarter")["Volume_Million_Pieces"].sum().reset_index()
+    fig_quarter = px.bar(
+        quarter_volume, x="Quarter", y="Volume_Million_Pieces",
+        title="Volume Required by Quarter", text_auto=".2s"
+    )
+    fig_quarter.update_layout(yaxis_tickformat=".2s")
+    st.plotly_chart(fig_quarter, use_container_width=True)
