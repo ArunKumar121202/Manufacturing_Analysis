@@ -249,12 +249,21 @@ with tab3:
 # ----------------------------- TAB 4 -----------------------------
 with tab4:
     st.subheader("🔹 Key Performance Indicators")
+
+    # Apply plant filter to the merged dataset for Tab 4
+    filtered_tab4_data = data_with_plant[
+        (data_with_plant["Region"].isin(region_filter)) &
+        (data_with_plant["Capacity"].isin(capacity_filter)) &
+        (data_with_plant["Type"].isin(type_filter)) &
+        (data_with_plant["blowing_plant"].isin(plant_filter))
+    ].copy()
+
     col1, col2, col3, col4 = st.columns(4)
 
-    top_capacity = filtered_data.groupby("Capacity")["Volume_Million_Pieces"].sum().idxmax()
-    top_weight = filtered_data.groupby("Weight_grams")["Volume_Million_Pieces"].sum().idxmax()
+    top_capacity = filtered_tab4_data.groupby("Capacity")["Volume_Million_Pieces"].sum().idxmax()
+    top_weight = filtered_tab4_data.groupby("Weight_grams")["Volume_Million_Pieces"].sum().idxmax()
     total_plants = Port["blowing_plant"].nunique()
-    avg_volume_required = filtered_data["Volume_Million_Pieces"].mean()
+    avg_volume_required = filtered_tab4_data["Volume_Million_Pieces"].mean()
 
     col1.metric("🏆 Top Capacity", f"{top_capacity}")
     col2.metric("⚖️ Top Bottle Weight", f"{top_weight} g")
@@ -266,7 +275,7 @@ with tab4:
 
     st.subheader("⚖️ Average PET Bottle Weight by Region")
     avg_weight_region = (
-        filtered_data.groupby("Region")["Weight_grams"].mean().reset_index().sort_values(by="Weight_grams", ascending=False)
+        filtered_tab4_data.groupby("Region")["Weight_grams"].mean().reset_index().sort_values(by="Weight_grams", ascending=False)
     )
     fig_avg_weight = px.bar(avg_weight_region, x="Region", y="Weight_grams", color="Region", text_auto=".2f")
     st.plotly_chart(fig_avg_weight, use_container_width=True)
@@ -277,24 +286,25 @@ with tab4:
     st.plotly_chart(fig_plant, use_container_width=True)
 
     st.subheader("🗺️ Volume by Country")
-    if "Country" in filtered_data.columns:
-        country_volume = filtered_data.groupby("Country")["Volume_Million_Pieces"].sum().reset_index()
-        fig_map = px.choropleth(country_volume, locations="Country", locationmode="country names", color="Volume_Million_Pieces", color_continuous_scale="Blues")
+    if "Country" in filtered_tab4_data.columns:
+        country_volume = filtered_tab4_data.groupby("Country")["Volume_Million_Pieces"].sum().reset_index()
+        fig_map = px.choropleth(
+            country_volume, locations="Country", locationmode="country names",
+            color="Volume_Million_Pieces", color_continuous_scale="Blues"
+        )
         st.plotly_chart(fig_map, use_container_width=True)
     else:
         st.warning("No 'Country' column found in the demand data to display map.")
 
     st.subheader("📆 Quarterly Volume Analysis")
-    filtered_data["Quarter"] = filtered_data["Date"].dt.to_period("Q").astype(str)
-    quarterly_volume = filtered_data.groupby("Quarter")["Volume_Million_Pieces"].sum().reset_index()
+    filtered_tab4_data["Quarter"] = filtered_tab4_data["Date"].dt.to_period("Q").astype(str)
+    quarterly_volume = filtered_tab4_data.groupby("Quarter")["Volume_Million_Pieces"].sum().reset_index()
     fig_quarter = px.bar(quarterly_volume, x="Quarter", y="Volume_Million_Pieces", text_auto=".2s")
     st.plotly_chart(fig_quarter, use_container_width=True)
 
-    # Volume Supplied by Each Blowing Plant
     st.subheader("🏭 Volume Supplied by Each Blowing Plant")
-    merged_filtered = filtered_data.merge(Port, how="left", left_on="Region", right_on="region")
     plant_volume = (
-        merged_filtered.groupby("blowing_plant")["Volume_Million_Pieces"]
+        filtered_tab4_data.groupby("blowing_plant")["Volume_Million_Pieces"]
         .sum().reset_index().sort_values(by="Volume_Million_Pieces", ascending=False)
     )
     fig_plant_volume = px.bar(
@@ -304,3 +314,4 @@ with tab4:
     )
     fig_plant_volume.update_layout(yaxis_tickformat=".2s")
     st.plotly_chart(fig_plant_volume, use_container_width=True)
+
