@@ -8,9 +8,10 @@ st.set_page_config(page_title="PET Bottle Demand Dashboard", layout="wide")
 # ---------- Load & Clean Data ----------
 data = pd.read_csv("Demand.csv")
 data.columns = data.columns.str.strip()
-Port=pd.read_csv("Port.csv")
-raw_data=pd.read_csv("Raw Material Prices.csv")
-# Rename for convenience
+Port = pd.read_csv("Port.csv")
+raw_data = pd.read_csv("Raw Material Prices.csv")
+
+# Rename columns for convenience
 data.rename(columns={
     "Date of requirement": "Date",
     "PET bottle capacity": "Capacity",
@@ -46,6 +47,14 @@ data["Capacity"] = (
 # Clean Type column
 data["Type"] = data["Type"].astype(str).str.strip().str.title()
 
+# ---------- Clean Port Data ----------
+Port.columns = Port.columns.str.strip().str.lower().str.replace(" ", "_")
+Port["region"] = Port["region"].str.strip().str.lower()
+data["Region"] = data["Region"].str.strip().str.lower()
+
+# Merge Demand with Port data to get blowing plant info
+data = data.merge(Port, how="left", left_on="Region", right_on="region")
+
 # ---------- Sidebar Filters ----------
 with st.sidebar:
     st.title("🔍 Filters")
@@ -68,19 +77,32 @@ with st.sidebar:
         default=sorted(data["Type"].dropna().unique())
     )
 
+    plant_filter = st.multiselect(
+        "Select Blowing Plant(s)",
+        options=sorted(data["blowing_plant"].dropna().unique()),
+        default=sorted(data["blowing_plant"].dropna().unique())
+    )
+
 # ---------- Filtered Data ----------
 filtered_data = data[
     (data["Region"].isin(region_filter)) &
     (data["Capacity"].isin(capacity_filter)) &
-    (data["Type"].isin(type_filter))
+    (data["Type"].isin(type_filter)) &
+    (data["blowing_plant"].isin(plant_filter))
 ]
 
 # ---------- Main Title ----------
 st.title("📦 PET Bottle Demand Dashboard")
 
 # ---------- Tabs ----------
-tab1, tab2,tab3, tab4 = st.tabs(["📈 Demand Analysis", "🔗 Raw Material Pricing Trends","📊 Correlation Analysis", "⚙️ Comparative & Supply Chain Demand"])
-# ---------- TAB 1: Demand Analysis ----------
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📈 Demand Analysis",
+    "🔗 Raw Material Pricing Trends",
+    "📊 Correlation Analysis",
+    "⚙️ Comparative & Supply Chain Demand"
+])
+
+# ----------------------------- TAB 1 -----------------------------
 with tab1:
     st.subheader("🔹 Key Performance Indicators")
 
@@ -103,7 +125,6 @@ with tab1:
 
     st.markdown("---")
 
-    # Monthly Trend
     st.subheader("📅 Monthly Demand Trend")
     month_order = [
         "January", "February", "March", "April", "May", "June",
@@ -111,12 +132,8 @@ with tab1:
     ]
     monthly_data = (
         filtered_data.groupby("Month")["Volume_Million_Pieces"]
-        .sum()
-        .reindex(month_order)
-        .reset_index()
-        .dropna()
+        .sum().reindex(month_order).reset_index().dropna()
     )
-
     fig_month = px.line(
         monthly_data, x="Month", y="Volume_Million_Pieces",
         markers=True, title="Monthly PET Bottle Demand"
@@ -128,7 +145,6 @@ with tab1:
     )
     st.plotly_chart(fig_month, use_container_width=True)
 
-    # Heatmap
     st.subheader("🌍 Region vs Month Heatmap")
     heatmap_data = filtered_data.groupby(["Region", "Month"])["Volume_Million_Pieces"].sum().reset_index()
     heatmap_data["Month"] = pd.Categorical(heatmap_data["Month"], categories=month_order, ordered=True)
@@ -141,7 +157,6 @@ with tab1:
     fig_heatmap.update_layout(coloraxis_colorbar_tickformat=".2s")
     st.plotly_chart(fig_heatmap, use_container_width=True)
 
-    # Capacity-wise
     st.subheader("🧪 Capacity-wise Demand")
     cap_data = filtered_data.groupby("Capacity")["Volume_Million_Pieces"].sum().reset_index()
     fig_cap = px.bar(
@@ -153,7 +168,6 @@ with tab1:
     fig_cap.update_layout(yaxis_tickformat=".2s")
     st.plotly_chart(fig_cap, use_container_width=True)
 
-    # Type-wise
     st.subheader("🧱 Type-wise Demand")
     type_data = filtered_data.groupby("Type")["Volume_Million_Pieces"].sum().reset_index()
     fig_type = px.bar(
@@ -165,48 +179,31 @@ with tab1:
     fig_type.update_layout(yaxis_tickformat=".2s")
     st.plotly_chart(fig_type, use_container_width=True)
 
-# ---------- TAB 2: Raw Material Pricing Trends ----------
+# ----------------------------- TAB 2 -----------------------------
 with tab2:
-    # Clean column names
     raw_data.columns = raw_data.columns.str.replace("\n", " ").str.strip()
-
-    # Dynamically rename PET price column
     for col in raw_data.columns:
         if "PET" in col and "Poly Ethylene" in col:
             raw_data.rename(columns={col: "PET_Price"}, inplace=True)
             break
 
-    # Convert Month to datetime
     raw_data["Month"] = pd.to_datetime(raw_data["Month"], errors="coerce")
-
-    # Convert PET_Price and other material prices to numeric
     for col in raw_data.columns:
         if col != "Month":
             raw_data[col] = pd.to_numeric(raw_data[col], errors="coerce")
-
-    # Add Year and Month_Name columns
     raw_data["Year"] = raw_data["Month"].dt.year
     raw_data["Month_Name"] = raw_data["Month"].dt.strftime('%B')
-    
-    st.subheader("🔹 Key Performance Indicators")
-    # KPI 1: Average PET price
-    avg_pet = raw_data["PET_Price"].mean()
 
-    # KPI 2: Most recent PET price (based on latest month)
+    st.subheader("🔹 Key Performance Indicators")
+    avg_pet = raw_data["PET_Price"].mean()
     latest_row = raw_data.dropna(subset=["PET_Price"]).sort_values("Month").iloc[-1]
     recent_pet = latest_row["PET_Price"]
     recent_pet_month = latest_row["Month"].strftime("%B %Y")
-
-    # KPI 3: Max PET price ever recorded
     max_pet = raw_data["PET_Price"].max()
-
-    # KPI 4: YoY % change
     yoy_change = None
     yearly_avg = raw_data.groupby("Year")["PET_Price"].mean().sort_index()
     if len(yearly_avg) >= 2:
         yoy_change = ((yearly_avg.iloc[-1] - yearly_avg.iloc[-2]) / yearly_avg.iloc[-2]) * 100
-    
-    # Display KPIs
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("📊 Average PET Price", f"${avg_pet:.2f}")
     k2.metric("🕒 Recent PET Price", f"${recent_pet:.2f}", delta=recent_pet_month)
@@ -216,8 +213,6 @@ with tab2:
     st.markdown("---")
     st.subheader("📊 Raw Material Pricing Trends")
 
-    # --- 1. Raw Material Prices Summed by Month Name ---
-    st.subheader("📉 Monthly Raw Material Price Trends")
     material_cols = [col for col in raw_data.columns if col not in ["Month", "Year", "Month_Name", "PET_Price"]]
     monthwise_sum = raw_data.groupby("Month_Name")[material_cols].sum().reindex([
         "January", "February", "March", "April", "May", "June",
@@ -230,8 +225,6 @@ with tab2:
     )
     st.plotly_chart(fig_monthwise, use_container_width=True)
 
-    # --- 2. Raw Material Prices Summed by Year ---
-    st.subheader("📈 Yearly Raw Material Price Trends")
     yearwise_sum = raw_data.groupby("Year")[material_cols].sum().reset_index()
     fig_yearwise = px.line(
         yearwise_sum.melt(id_vars="Year"),
@@ -240,62 +233,29 @@ with tab2:
     )
     st.plotly_chart(fig_yearwise, use_container_width=True)
 
-    # --- 3. Average PET Price by Year ---
-    st.subheader("📊 Average PET Prices by Year")
     pet_by_year = raw_data.groupby("Year")["PET_Price"].mean().reset_index()
-    fig_pet_year = px.bar(
-        pet_by_year, x="Year", y="PET_Price",
-        title="Average PET Price by Year",
-        text_auto=".2f"
-    )
+    fig_pet_year = px.bar(pet_by_year, x="Year", y="PET_Price", title="Average PET Price by Year", text_auto=".2f")
     st.plotly_chart(fig_pet_year, use_container_width=True)
 
-    # --- 4. Monthly Average PET Prices ---
-    st.subheader("🗓️ Monthly Average PET Prices")
     pet_by_month = raw_data.groupby("Month_Name")["PET_Price"].mean().reindex([
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     ]).reset_index()
-    fig_pet_month = px.bar(
-        pet_by_month, x="Month_Name", y="PET_Price",
-        title="Average PET Price by Month",
-        text_auto=".2f"
-    )
+    fig_pet_month = px.bar(pet_by_month, x="Month_Name", y="PET_Price", title="Average PET Price by Month", text_auto=".2f")
     st.plotly_chart(fig_pet_month, use_container_width=True)
+
+# ----------------------------- TAB 3 -----------------------------
 with tab3:
-    st.subheader("Note:-Analysis Needed to be Added...!")
+    st.subheader("Note:- Analysis Needed to be Added...!")
 
-
-# ---------- Clean Port Data ----------
-Port.columns = Port.columns.str.strip().str.lower().str.replace(" ", "_")
-Port["region"] = Port["region"].str.strip().str.lower()
-data["Region"] = data["Region"].str.strip().str.lower()
-
-# ---------- Merge Demand and Port Data ----------
-merged_df = data.merge(Port, how="left", left_on="Region", right_on="region")
-
-# ---------- TAB 4: Comparative & Supply Chain Demand ----------
+# ----------------------------- TAB 4 -----------------------------
 with tab4:
     st.subheader("🔹 Key Performance Indicators")
-
     col1, col2, col3, col4 = st.columns(4)
 
-    # KPI 1: Top Capacity in Demand
-    top_capacity = (
-        filtered_data.groupby("Capacity")["Volume_Million_Pieces"]
-        .sum().idxmax()
-    )
-
-    # KPI 2: Top Weight in Demand
-    top_weight = (
-        filtered_data.groupby("Weight_grams")["Volume_Million_Pieces"]
-        .sum().idxmax()
-    )
-
-    # KPI 3: Total Blowing Plants
+    top_capacity = filtered_data.groupby("Capacity")["Volume_Million_Pieces"].sum().idxmax()
+    top_weight = filtered_data.groupby("Weight_grams")["Volume_Million_Pieces"].sum().idxmax()
     total_plants = Port["blowing_plant"].nunique()
-
-    # KPI 4: Average Volume Required
     avg_volume_required = filtered_data["Volume_Million_Pieces"].mean()
 
     col1.metric("🏆 Top Capacity", f"{top_capacity}")
@@ -306,63 +266,28 @@ with tab4:
     st.markdown("---")
     st.subheader("📊 Comparative & Supply Chain Analysis")
 
-    # 1. Bar Chart: Average Bottle Weight by Region
     st.subheader("⚖️ Average PET Bottle Weight by Region")
     avg_weight_region = (
-        filtered_data.groupby("Region")["Weight_grams"]
-        .mean().reset_index().sort_values(by="Weight_grams", ascending=False)
+        filtered_data.groupby("Region")["Weight_grams"].mean().reset_index().sort_values(by="Weight_grams", ascending=False)
     )
-    fig_avg_weight = px.bar(
-        avg_weight_region,
-        x="Region", y="Weight_grams", color="Region",
-        title="Average PET Bottle Weight by Region",
-        text_auto=".2f",
-        labels={"Weight_grams": "Avg. Weight (g)"}
-    )
+    fig_avg_weight = px.bar(avg_weight_region, x="Region", y="Weight_grams", color="Region", text_auto=".2f")
     st.plotly_chart(fig_avg_weight, use_container_width=True)
 
-
-    # 2. Bar Chart: Blowing Plants per Region
     st.subheader("🏭 Blowing Plants per Region")
     region_plant_counts = Port.groupby("region")["blowing_plant"].nunique().reset_index()
-    fig_plant = px.bar(
-        region_plant_counts,
-        x="region", y="blowing_plant", text_auto=True,
-        title="Number of Blowing Plants per Region",
-        labels={"region": "Region", "blowing_plant": "Blowing Plants Count"}
-    )
+    fig_plant = px.bar(region_plant_counts, x="region", y="blowing_plant", text_auto=True)
     st.plotly_chart(fig_plant, use_container_width=True)
 
-    # 3. Map Chart: Volume by Country
     st.subheader("🗺️ Volume by Country")
     if "Country" in filtered_data.columns:
-        country_volume = (
-            filtered_data.groupby("Country")["Volume_Million_Pieces"]
-            .sum().reset_index()
-        )
-        fig_map = px.choropleth(
-            country_volume,
-            locations="Country",
-            locationmode="country names",
-            color="Volume_Million_Pieces",
-            color_continuous_scale="Blues",
-            title="Total Volume by Country"
-        )
+        country_volume = filtered_data.groupby("Country")["Volume_Million_Pieces"].sum().reset_index()
+        fig_map = px.choropleth(country_volume, locations="Country", locationmode="country names", color="Volume_Million_Pieces", color_continuous_scale="Blues")
         st.plotly_chart(fig_map, use_container_width=True)
     else:
         st.warning("No 'Country' column found in the demand data to display map.")
 
-    # 4. Quarterly Volume
     st.subheader("📆 Quarterly Volume Analysis")
     filtered_data["Quarter"] = filtered_data["Date"].dt.to_period("Q").astype(str)
-    quarterly_volume = (
-        filtered_data.groupby("Quarter")["Volume_Million_Pieces"]
-        .sum().reset_index()
-    )
-    fig_quarter = px.bar(
-        quarterly_volume, x="Quarter", y="Volume_Million_Pieces",
-        text_auto=".2s", title="Quarterly Volume Demand"
-    )
-    fig_quarter.update_layout(yaxis_tickformat=".2s")
+    quarterly_volume = filtered_data.groupby("Quarter")["Volume_Million_Pieces"].sum().reset_index()
+    fig_quarter = px.bar(quarterly_volume, x="Quarter", y="Volume_Million_Pieces", text_auto=".2s")
     st.plotly_chart(fig_quarter, use_container_width=True)
-
