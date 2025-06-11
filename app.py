@@ -56,6 +56,7 @@ data["Region"] = data["Region"].str.strip().str.lower()
 data_with_plant = data.merge(Port, how="left", left_on="Region", right_on="region")
 
 # ---------- Sidebar Filters ----------
+# ---------- Sidebar Filters ----------
 with st.sidebar:
     st.title("🔍 Filters")
 
@@ -77,17 +78,31 @@ with st.sidebar:
         default=sorted(data["Type"].dropna().unique())
     )
 
+    month_filter = st.multiselect(
+        "Select Month(s)",
+        options=[
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ],
+        default=[
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ]
+    )
+
     plant_filter = st.multiselect(
         "Select Blowing Plant(s)",
         options=sorted(data_with_plant["blowing_plant"].dropna().unique()),
         default=sorted(data_with_plant["blowing_plant"].dropna().unique())
     )
 
+
 # ---------- Filtered Data for Tab 1 (unaltered) ----------
 filtered_data = data[
     (data["Region"].isin(region_filter)) &
     (data["Capacity"].isin(capacity_filter)) &
-    (data["Type"].isin(type_filter))
+    (data["Type"].isin(type_filter)) &
+    (data["Month"].isin(month_filter))
 ]
 
 # ---------- Main Title ----------
