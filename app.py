@@ -205,8 +205,9 @@ with tab2:
     yearly_avg = raw_data.groupby("Year")["PET_Price"].mean().sort_index()
     if len(yearly_avg) >= 2:
         yoy_change = ((yearly_avg.iloc[-1] - yearly_avg.iloc[-2]) / yearly_avg.iloc[-2]) * 100
+    
+    st.subheader("🔹 Key Performance Indicators")
 
-    st.subheader("📊 Raw Material Pricing Trends")
     # Display KPIs
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("📊 Average PET Price", f"${avg_pet:.2f}")
@@ -215,6 +216,7 @@ with tab2:
     k4.metric("🔁 YoY PET Price Change", f"{yoy_change:.2f}%" if yoy_change is not None else "N/A")
 
     st.markdown("---")
+    st.subheader("📊 Raw Material Pricing Trends")
 
     # --- 1. Raw Material Prices Summed by Month Name ---
     st.subheader("📉 Monthly Raw Material Price Trends")
