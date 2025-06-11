@@ -246,6 +246,7 @@ with tab2:
 # ----------------------------- TAB 3 -----------------------------
 with tab3:
     st.subheader("Note:- Analysis Needed to be Added...!")
+
 # ----------------------------- TAB 4 -----------------------------
 with tab4:
     st.subheader("🔹 Key Performance Indicators")
@@ -290,9 +291,9 @@ with tab4:
     fig_quarter = px.bar(quarterly_volume, x="Quarter", y="Volume_Million_Pieces", text_auto=".2s")
     st.plotly_chart(fig_quarter, use_container_width=True)
 
-    # Volume Supplied by Each Blowing Plant
     st.subheader("🏭 Volume Supplied by Each Blowing Plant")
     merged_filtered = filtered_data.merge(Port, how="left", left_on="Region", right_on="region")
+    merged_filtered = merged_filtered[merged_filtered["blowing_plant"].isin(plant_filter)]
     plant_volume = (
         merged_filtered.groupby("blowing_plant")["Volume_Million_Pieces"]
         .sum().reset_index().sort_values(by="Volume_Million_Pieces", ascending=False)
@@ -303,4 +304,4 @@ with tab4:
         labels={"blowing_plant": "Blowing Plant", "Volume_Million_Pieces": "Volume (Million Pieces)"}
     )
     fig_plant_volume.update_layout(yaxis_tickformat=".2s")
-    st.plotly_chart(fig_plant_volume, use_container_width=True) please modify this code without touching tab1,2 and 3
+    st.plotly_chart(fig_plant_volume, use_container_width=True)
