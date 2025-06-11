@@ -262,3 +262,100 @@ with tab2:
         text_auto=".2f"
     )
     st.plotly_chart(fig_pet_month, use_container_width=True)
+with tab3:
+    st.subheader("Note:-Analysis Needed to be Added...!")
+
+
+# ---------- Clean Port Data ----------
+Port.columns = Port.columns.str.strip().str.lower().str.replace(" ", "_")
+Port["region"] = Port["region"].str.strip().str.lower()
+data["Region"] = data["Region"].str.strip().str.lower()
+
+# ---------- Merge Demand and Port Data ----------
+merged_df = data.merge(Port, how="left", left_on="Region", right_on="region")
+
+# ---------- TAB 4: Comparative & Supply Chain Demand ----------
+with tab4:
+    st.subheader("🔹 Key Performance Indicators")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    # KPI 1: Top Capacity in Demand
+    top_capacity = (
+        filtered_data.groupby("Capacity")["Volume_Million_Pieces"]
+        .sum().idxmax()
+    )
+
+    # KPI 2: Top Weight in Demand
+    top_weight = (
+        filtered_data.groupby("Weight_grams")["Volume_Million_Pieces"]
+        .sum().idxmax()
+    )
+
+    # KPI 3: Total Blowing Plants
+    total_plants = Port["blowing_plant"].nunique()
+
+    # KPI 4: Average Volume Required
+    avg_volume_required = filtered_data["Volume_Million_Pieces"].mean()
+
+    col1.metric("🏆 Top Capacity", f"{top_capacity}")
+    col2.metric("⚖️ Top Bottle Weight", f"{top_weight} g")
+    col3.metric("🏭 Total Blowing Plants", f"{total_plants}")
+    col4.metric("📦 Avg. Volume Required", f"{avg_volume_required:.2f} M")
+
+    st.markdown("---")
+    st.subheader("📊 Comparative & Supply Chain Analysis")
+
+    # 1. Box Plot: Bottle Weight by Region
+    st.subheader("📦 Bottle Weight Distribution by Region")
+    fig_box = px.box(
+        filtered_data,
+        x="Region", y="Weight_grams", color="Region",
+        title="PET Bottle Weight Distribution by Region"
+    )
+    st.plotly_chart(fig_box, use_container_width=True)
+
+    # 2. Bar Chart: Blowing Plants per Region
+    st.subheader("🏭 Blowing Plants per Region")
+    region_plant_counts = Port.groupby("region")["blowing_plant"].nunique().reset_index()
+    fig_plant = px.bar(
+        region_plant_counts,
+        x="region", y="blowing_plant", text_auto=True,
+        title="Number of Blowing Plants per Region",
+        labels={"region": "Region", "blowing_plant": "Blowing Plants Count"}
+    )
+    st.plotly_chart(fig_plant, use_container_width=True)
+
+    # 3. Map Chart: Volume by Country
+    st.subheader("🗺️ Volume by Country")
+    if "Country" in filtered_data.columns:
+        country_volume = (
+            filtered_data.groupby("Country")["Volume_Million_Pieces"]
+            .sum().reset_index()
+        )
+        fig_map = px.choropleth(
+            country_volume,
+            locations="Country",
+            locationmode="country names",
+            color="Volume_Million_Pieces",
+            color_continuous_scale="Blues",
+            title="Total Volume by Country"
+        )
+        st.plotly_chart(fig_map, use_container_width=True)
+    else:
+        st.warning("No 'Country' column found in the demand data to display map.")
+
+    # 4. Quarterly Volume
+    st.subheader("📆 Quarterly Volume Analysis")
+    filtered_data["Quarter"] = filtered_data["Date"].dt.to_period("Q").astype(str)
+    quarterly_volume = (
+        filtered_data.groupby("Quarter")["Volume_Million_Pieces"]
+        .sum().reset_index()
+    )
+    fig_quarter = px.bar(
+        quarterly_volume, x="Quarter", y="Volume_Million_Pieces",
+        text_auto=".2s", title="Quarterly Volume Demand"
+    )
+    fig_quarter.update_layout(yaxis_tickformat=".2s")
+    st.plotly_chart(fig_quarter, use_container_width=True)
+
