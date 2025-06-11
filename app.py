@@ -8,6 +8,7 @@ st.set_page_config(page_title="PET Bottle Demand Dashboard", layout="wide")
 # ---------- Load & Clean Data ----------
 data = pd.read_csv("Demand.csv")
 data.columns = data.columns.str.strip()
+Port=pd.read_csv("Port.csv")
 raw_data=pd.read_csv("Raw Material Prices.csv")
 # Rename for convenience
 data.rename(columns={
@@ -187,7 +188,7 @@ with tab2:
     # Add Year and Month_Name columns
     raw_data["Year"] = raw_data["Month"].dt.year
     raw_data["Month_Name"] = raw_data["Month"].dt.strftime('%B')
-
+    st.subheader("🔹 Key Performance Indicators")
     # KPI 1: Average PET price
     avg_pet = raw_data["PET_Price"].mean()
 
