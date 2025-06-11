@@ -246,7 +246,13 @@ with tab2:
 # ----------------------------- TAB 3 -----------------------------
 with tab3:
     st.subheader("Note:- Analysis Needed to be Added...!")
-
+    corr_data = filtered_data.select_dtypes(include='number')
+    if not corr_data.empty and "Volume_Million_Pieces" in corr_data.columns:
+        corr = corr_data.corr().round(2)
+        fig_corr = px.imshow(corr, text_auto=True, aspect="auto", title="Correlation Heatmap")
+        st.plotly_chart(fig_corr, use_container_width=True)
+    else:
+        st.warning("Not enough numeric data to compute correlations.")
 # ----------------------------- TAB 4 -----------------------------
 with tab4:
     st.subheader("🔹 Key Performance Indicators")
