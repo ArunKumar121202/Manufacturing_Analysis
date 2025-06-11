@@ -306,14 +306,21 @@ with tab4:
     st.markdown("---")
     st.subheader("📊 Comparative & Supply Chain Analysis")
 
-    # 1. Box Plot: Bottle Weight by Region
-    st.subheader("📦 Bottle Weight Distribution by Region")
-    fig_box = px.box(
-        filtered_data,
-        x="Region", y="Weight_grams", color="Region",
-        title="PET Bottle Weight Distribution by Region"
+    # 1. Bar Chart: Average Bottle Weight by Region
+    st.subheader("⚖️ Average PET Bottle Weight by Region")
+    avg_weight_region = (
+        filtered_data.groupby("Region")["Weight_grams"]
+        .mean().reset_index().sort_values(by="Weight_grams", ascending=False)
     )
-    st.plotly_chart(fig_box, use_container_width=True)
+    fig_avg_weight = px.bar(
+        avg_weight_region,
+        x="Region", y="Weight_grams", color="Region",
+        title="Average PET Bottle Weight by Region",
+        text_auto=".2f",
+        labels={"Weight_grams": "Avg. Weight (g)"}
+    )
+    st.plotly_chart(fig_avg_weight, use_container_width=True)
+
 
     # 2. Bar Chart: Blowing Plants per Region
     st.subheader("🏭 Blowing Plants per Region")
