@@ -2,6 +2,47 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
+# ------------------- Authentication Setup -------------------
+VALID_USERNAME = "admin"
+VALID_PASSWORD = "password123"
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+def login():
+    st.title("🔐 PET Bottle Demand Dashboard Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        if username == VALID_USERNAME and password == VALID_PASSWORD:
+            st.session_state.logged_in = True
+            st.success("Login successful. Please wait...")
+            st.experimental_rerun()
+        else:
+            st.error("Invalid username or password")
+
+def logout():
+    st.session_state.logged_in = False
+    st.success("Logged out successfully")
+    st.experimental_rerun()
+
+# ------------------- If Not Logged In -------------------
+if not st.session_state.logged_in:
+    login()
+    st.stop()
+
+# ------------------- Logout Button -------------------
+st.markdown(
+    """
+    <div style="display: flex; justify-content: flex-end;">
+        <form action="#" method="post">
+            <button onclick="window.location.reload();" style="background-color: #f44336; color: white; border: none; padding: 0.5em 1em; cursor: pointer; border-radius: 5px;">Logout</button>
+        </form>
+    </div>
+    """, unsafe_allow_html=True
+)
+if st.button("Click to Logout", key="logout_button"):
+    logout()
 # ---------- Page Configuration ----------
 st.set_page_config(page_title="PET Bottle Demand Dashboard", layout="wide")
 
