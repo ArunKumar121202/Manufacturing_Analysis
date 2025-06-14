@@ -41,7 +41,7 @@ st.markdown(
     </div>
     """, unsafe_allow_html=True
 )
-if st.button("Click to Logout", key="logout_button"):
+if st.button("🚪 Logout"):
     logout()
 # ---------- Page Configuration ----------
 st.set_page_config(page_title="PET Bottle Demand Dashboard", layout="wide")
