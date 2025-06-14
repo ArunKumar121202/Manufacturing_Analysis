@@ -2,16 +2,48 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# ---------- Page Configuration ----------
+# ------------------- Authentication Setup -------------------
+VALID_USERNAME = "admin"
+VALID_PASSWORD = "password123"
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+def login():
+    st.title("🔐 PET Bottle Demand Dashboard Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        if username == VALID_USERNAME and password == VALID_PASSWORD:
+            st.session_state.logged_in = True
+            st.success("Login successful!")
+            st.experimental_rerun()
+        else:
+            st.error("Invalid username or password.")
+
+def logout():
+    st.session_state.logged_in = False
+    st.experimental_rerun()
+
+if not st.session_state.logged_in:
+    login()
+    st.stop()
+
+# ------------------- Page Configuration -------------------
 st.set_page_config(page_title="PET Bottle Demand Dashboard", layout="wide")
 
-# ---------- Load & Clean Data ----------
+# ------------------- Sidebar Logout Button -------------------
+st.sidebar.markdown("---")
+if st.sidebar.button("🔓 Logout"):
+    logout()
+
+# ------------------- Load & Clean Data -------------------
 data = pd.read_csv("Demand.csv")
 data.columns = data.columns.str.strip()
 Port = pd.read_csv("Port.csv")
 raw_data = pd.read_csv("Raw Material Prices.csv")
 
-# Rename columns for convenience
+# Rename columns
 data.rename(columns={
     "Date of requirement": "Date",
     "PET bottle capacity": "Capacity",
@@ -19,17 +51,14 @@ data.rename(columns={
     "Volume (Million Pieces)": "Volume_Million_Pieces"
 }, inplace=True)
 
-# Parse Date and filter only 2019
 data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
 data = data[data["Date"].dt.year == 2019].copy()
 data["Month"] = data["Date"].dt.month_name()
 
-# Clean Capacity column
 data["Capacity"] = (
     data["Capacity"].astype(str)
     .str.replace(r"[^\w\s.]", "", regex=True)
     .str.lower()
-    .str.replace("oz", "oz", regex=False)
     .str.replace(" ", "")
     .str.replace(".", "")
     .str.replace(",", "")
@@ -44,19 +73,15 @@ data["Capacity"] = (
     })
 )
 
-# Clean Type column
 data["Type"] = data["Type"].astype(str).str.strip().str.title()
 
-# ---------- Clean Port Data ----------
 Port.columns = Port.columns.str.strip().str.lower().str.replace(" ", "_")
 Port["region"] = Port["region"].str.strip().str.lower()
 data["Region"] = data["Region"].str.strip().str.lower()
 
-# Merge Demand with Port data to get blowing plant info (used later, not in Tab 1)
 data_with_plant = data.merge(Port, how="left", left_on="Region", right_on="region")
 
-# ---------- Sidebar Filters ----------
-# ---------- Sidebar Filters ----------
+# ------------------- Sidebar Filters -------------------
 with st.sidebar:
     st.title("🔍 Filters")
 
@@ -96,8 +121,6 @@ with st.sidebar:
         default=sorted(data_with_plant["blowing_plant"].dropna().unique())
     )
 
-
-# ---------- Filtered Data for Tab 1 (unaltered) ----------
 filtered_data = data[
     (data["Region"].isin(region_filter)) &
     (data["Capacity"].isin(capacity_filter)) &
@@ -105,10 +128,10 @@ filtered_data = data[
     (data["Month"].isin(month_filter))
 ]
 
-# ---------- Main Title ----------
+# ------------------- Main Title -------------------
 st.title("📦 PET Bottle Demand Dashboard")
 
-# ---------- Tabs ----------
+# ------------------- Tabs -------------------
 tab1, tab2, tab3, tab4 = st.tabs([
     "📈 Demand Analysis",
     "🔗 Raw Material Pricing Trends",
@@ -116,7 +139,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "⚙️ Comparative & Supply Chain Demand"
 ])
 
-# ----------------------------- TAB 1 -----------------------------
+# ------------------- TAB 1 -------------------
 with tab1:
     st.subheader("🔹 Key Performance Indicators")
 
@@ -193,7 +216,7 @@ with tab1:
     fig_type.update_layout(yaxis_tickformat=".2s")
     st.plotly_chart(fig_type, use_container_width=True)
 
-# ----------------------------- TAB 2 -----------------------------
+# ------------------- TAB 2 -------------------
 with tab2:
     raw_data.columns = raw_data.columns.str.replace("\n", " ").str.strip()
     for col in raw_data.columns:
@@ -258,7 +281,7 @@ with tab2:
     fig_pet_month = px.bar(pet_by_month, x="Month_Name", y="PET_Price", title="Average PET Price by Month", text_auto=".2f")
     st.plotly_chart(fig_pet_month, use_container_width=True)
 
-# ----------------------------- TAB 3 -----------------------------
+# ------------------- TAB 3 -------------------
 with tab3:
     st.subheader("Correlation Analysis of the numerical columns")
     corr_data = filtered_data.select_dtypes(include='number')
@@ -268,7 +291,8 @@ with tab3:
         st.plotly_chart(fig_corr, use_container_width=True)
     else:
         st.warning("Not enough numeric data to compute correlations.")
-# ----------------------------- TAB 4 -----------------------------
+
+# ------------------- TAB 4 -------------------
 with tab4:
     st.subheader("🔹 Key Performance Indicators")
     col1, col2, col3, col4 = st.columns(4)
