@@ -10,21 +10,24 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 def login():
+    st.set_page_config(page_title="Login | PET Demand Dashboard", layout="centered")
     st.title("🔐 PET Bottle Demand Dashboard Login")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    if st.button("Login"):
-        if username == VALID_USERNAME and password == VALID_PASSWORD:
-            st.session_state.logged_in = True
-            st.success("Login successful. Please wait...")
-            st.experimental_rerun()
-        else:
-            st.error("Invalid username or password")
+    with st.form("login_form"):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submit = st.form_submit_button("Login")
+        if submit:
+            if username == VALID_USERNAME and password == VALID_PASSWORD:
+                st.session_state.logged_in = True
+                st.success("Login successful. Redirecting...")
+                st.rerun()
+            else:
+                st.error("Invalid username or password")
 
 def logout():
     st.session_state.logged_in = False
     st.success("Logged out successfully")
-    st.experimental_rerun()
+    st.rerun()
 
 # ------------------- If Not Logged In -------------------
 if not st.session_state.logged_in:
