@@ -17,13 +17,13 @@ def login():
         if username == VALID_USERNAME and password == VALID_PASSWORD:
             st.session_state.logged_in = True
             st.success("Login successful!")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Invalid username or password.")
 
 def logout():
     st.session_state.logged_in = False
-    st.experimental_rerun()
+    st.rerun()
 
 if not st.session_state.logged_in:
     login()
